@@ -200,3 +200,49 @@
     (ok amount)
   )
 )
+
+;; ----- Read-only Functions -----
+
+;; Get sheet music details
+(define-read-only (get-sheet-music (music-id uint))
+  (map-get? sheet-music-catalog { music-id: music-id })
+)
+
+;; Check if user owns sheet music
+(define-read-only (check-ownership (user principal) (music-id uint))
+  (match (map-get? user-purchases { user: user, music-id: music-id })
+    purchase-data (get purchased purchase-data)
+    false
+  )
+)
+
+;; Get creator balance
+(define-read-only (get-creator-balance (creator principal))
+  (default-to { balance: u0 } (map-get? creator-balances { creator: creator }))
+)
+
+;; Get user library
+(define-read-only (get-purchase-details (user principal) (music-id uint))
+  (map-get? user-purchases { user: user, music-id: music-id })
+)
+
+;; ----- Admin Functions -----
+
+;; Update platform fee
+(define-public (update-platform-fee (new-fee-percentage uint))
+  (begin
+    (asserts! (is-eq tx-sender (var-get marketplace-admin)) ERR-NOT-AUTHORIZED)
+    (asserts! (<= new-fee-percentage u100) ERR-INVALID-PRICE)
+    (var-set platform-fee-percentage new-fee-percentage)
+    (ok true)
+  )
+)
+
+;; Transfer admin rights
+(define-public (transfer-admin (new-admin principal))
+  (begin
+    (asserts! (is-eq tx-sender (var-get marketplace-admin)) ERR-NOT-AUTHORIZED)
+    (var-set marketplace-admin new-admin)
+    (ok true)
+  )
+)
