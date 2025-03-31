@@ -87,3 +87,67 @@
     (ok music-id)
   )
 )
+
+;; Purchase sheet music
+(define-public (purchase-sheet-music (music-id uint) (license-type (string-utf8 20)))
+  (let
+    (
+      (music-item (unwrap! (map-get? sheet-music-catalog { music-id: music-id }) ERR-NOT-FOUND))
+      (price (get price music-item))
+      (owner (get owner music-item))
+      (royalty-percentage (get royalty-percentage music-item))
+      (platform-fee (/ (* price (var-get platform-fee-percentage)) u100))
+      (creator-fee (/ (* price royalty-percentage) u100))
+      (admin-address (var-get marketplace-admin))
+    )
+    ;; Check if sheet music is available
+    (asserts! (get available music-item) ERR-NOT-AVAILABLE)
+    
+    ;; Process payment
+    (try! (stx-transfer? price tx-sender admin-address))
+    
+    ;; Record purchase
+    (map-insert user-purchases
+      { user: tx-sender, music-id: music-id }
+      {
+        purchased: true,
+        purchase-time: block-height,
+        license-type: license-type,
+        download-count: u0
+      }
+    )
+    
+    ;; Update creator balance
+    (match (map-get? creator-balances { creator: owner })
+      existing-balance (map-set creator-balances
+        { creator: owner }
+        { balance: (+ (get balance existing-balance) creator-fee) }
+      )
+      (map-insert creator-balances
+        { creator: owner }
+        { balance: creator-fee }
+      )
+    )
+    
+    (ok true)
+  )
+)
+
+;; Log a download (to track usage)
+(define-public (log-download (music-id uint))
+  (let
+    (
+      (purchase-info (unwrap! (map-get? user-purchases { user: tx-sender, music-id: music-id }) ERR-NOT-AUTHORIZED))
+    )
+    ;; Verify purchase exists
+    (asserts! (get purchased purchase-info) ERR-NOT-AUTHORIZED)
+    
+    ;; Update download count
+    (map-set user-purchases
+      { user: tx-sender, music-id: music-id }
+      (merge purchase-info { download-count: (+ (get download-count purchase-info) u1) })
+    )
+    
+    (ok true)
+  )
+)
