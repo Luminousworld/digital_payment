@@ -151,3 +151,52 @@
     (ok true)
   )
 )
+
+;; Update sheet music metadata
+(define-public (update-sheet-music (music-id uint) (price (optional uint)) (available (optional bool)) (metadata-url (optional (string-utf8 256))))
+  (let
+    (
+      (music-item (unwrap! (map-get? sheet-music-catalog { music-id: music-id }) ERR-NOT-FOUND))
+    )
+    ;; Verify ownership
+    (asserts! (is-eq (get owner music-item) tx-sender) ERR-NOT-AUTHORIZED)
+    
+    ;; Update fields if provided
+    (map-set sheet-music-catalog
+      { music-id: music-id }
+      (merge music-item {
+        price: (default-to (get price music-item) price),
+        available: (default-to (get available music-item) available),
+        metadata-url: (match metadata-url
+          new-url (some new-url)
+          (get metadata-url music-item)
+        )
+      })
+    )
+    
+    (ok true)
+  )
+)
+
+;; Withdraw creator earnings
+(define-public (withdraw-earnings)
+  (let
+    (
+      (balance-data (unwrap! (map-get? creator-balances { creator: tx-sender }) ERR-NOT-FOUND))
+      (amount (get balance amount-data))
+    )
+    ;; Verify balance
+    (asserts! (> amount u0) ERR-INSUFFICIENT-FUNDS)
+    
+    ;; Transfer funds
+    (try! (as-contract (stx-transfer? amount (as-contract tx-sender) tx-sender)))
+    
+    ;; Reset balance
+    (map-set creator-balances
+      { creator: tx-sender }
+      { balance: u0 }
+    )
+    
+    (ok amount)
+  )
+)
