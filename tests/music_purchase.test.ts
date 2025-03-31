@@ -1,9 +1,8 @@
-import { Clarinet, Tx, Chain, Account } from "clarinet-sdk";
 import { assertEquals } from "vitest";
 
 Clarinet.test({
   name: "Listing and purchasing sheet music",
-  async fn(chain: Chain, accounts: Map<string, Account>) {
+  async fn(chain, accounts) {
     const deployer = accounts.get("deployer")!;
     const user = accounts.get("wallet_1")!;
     const admin = accounts.get("wallet_2")!;
