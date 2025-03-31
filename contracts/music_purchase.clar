@@ -29,3 +29,20 @@
     available: bool
   }
 )
+
+;; User purchases
+(define-map user-purchases
+  { user: principal, music-id: uint }
+  {
+    purchased: bool,
+    purchase-time: uint,
+    license-type: (string-utf8 20),
+    download-count: uint
+  }
+)
+
+;; User balances from sales
+(define-map creator-balances
+  { creator: principal }
+  { balance: uint }
+)
